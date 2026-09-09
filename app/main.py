@@ -1,7 +1,7 @@
 import cv2
 
 from control.follow_controller import get_drone_action
-from person_detector import detect_people, load_model
+from person_detector import PERSON_LABEL, detect_objects, load_model
 from person_tracker import get_direction, get_distance_status
 
 WEIGHTS_PATH = "yolo11n.pt"
@@ -24,12 +24,19 @@ def run():
 
             frame_width = frame.shape[1]  # Get frame dimensions
 
-            for box in detect_people(model, frame):
+            for label, box in detect_objects(model, frame):
+                draw_box(frame, box, label)
+
+                ## Following only makes sense for a person - every other
+                ## object just gets labeled and otherwise ignored.
+                if label != PERSON_LABEL:
+                    continue
+
                 direction = get_direction(box, frame_width)
                 distance_status = get_distance_status(box)
                 action = get_drone_action(direction, distance_status)
 
-                draw_overlay(frame, box, direction, distance_status, action)
+                draw_person_status(frame, direction, distance_status, action)
                 log_detection(box, direction, distance_status, action)
 
             ## Display the frame
@@ -44,10 +51,10 @@ def run():
         cv2.destroyAllWindows()
 
 
-def draw_overlay(frame, box, direction, distance_status, action):
+def draw_box(frame, box, label):
     x1, y1, x2, y2 = box
 
-    ## Draw bounding box around person
+    ## Draw bounding box + class label around every detected object
     cv2.rectangle(
         frame,
         (int(x1), int(y1)),
@@ -56,21 +63,25 @@ def draw_overlay(frame, box, direction, distance_status, action):
         2
     )
 
+    draw_text(frame, label, (int(x1), int(y1) - 10), font_scale=0.6)
+
+
+def draw_person_status(frame, direction, distance_status, action):
     ## Display direction
-    draw_text(frame, f"Direction: {direction}", 50)
+    draw_text(frame, f"Direction: {direction}", (30, 50))
 
     ## Display distance
-    draw_text(frame, f"Distance: {distance_status}", 90)
+    draw_text(frame, f"Distance: {distance_status}", (30, 90))
 
     ## Display drone action
-    draw_text(frame, f"Action: {action}", 130, font_scale=0.8)
+    draw_text(frame, f"Action: {action}", (30, 130), font_scale=0.8)
 
 
-def draw_text(frame, text, y, font_scale=1.0):
+def draw_text(frame, text, position, font_scale=1.0):
     cv2.putText(
         frame,
         text,
-        (30, y),
+        position,
         cv2.FONT_HERSHEY_SIMPLEX,
         font_scale,
         (0, 255, 0),
