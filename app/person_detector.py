@@ -11,7 +11,7 @@ def detect_objects(model, frame):
     """Runs YOLO on a frame and returns a (label, box) pair for every detected object,
     where box is (x1, y1, x2, y2). Not filtered to any one class - callers decide
     which labels matter to them (e.g. only "person" for following)."""
-    results = model(frame)  # Perform YOLO detection
+    results = model(frame, verbose=False)  # Perform YOLO detection
 
     boxes = results[0].boxes  # Extract detected boxes
 
