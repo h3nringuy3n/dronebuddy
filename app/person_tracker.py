@@ -5,13 +5,18 @@ TARGET_HEIGHT_RATIO = 0.55  # Box height / frame height we want to hold the pers
 DISTANCE_TOLERANCE = 0.10   # +/- around the target ratio counted as "GOOD DISTANCE"
 
 
-def select_target(person_boxes):
-    """Picks the one person to follow: the largest box (usually the closest person).
+def select_target(people, locked_id=None):
+    """Picks the one person (Detection) to follow. Stays locked on the same track ID
+    while it's still in frame, otherwise picks the largest box (usually the closest person).
     Returns None if there are no people in the frame."""
-    if not person_boxes:
+    if not people:
         return None
 
-    return max(person_boxes, key=box_area)
+    for person in people:
+        if locked_id is not None and person.track_id == locked_id:
+            return person
+
+    return max(people, key=lambda person: box_area(person.box))
 
 
 def box_area(box):
@@ -48,6 +53,16 @@ def get_direction(horizontal_error, dead_zone=DEAD_ZONE):
         return "RIGHT"
     else:
         return "CENTER"
+
+
+def describe_position(horizontal_error):
+    """Spoken position for the user, splitting the frame into thirds."""
+    if horizontal_error < -1 / 3:
+        return "on your left"
+    elif horizontal_error > 1 / 3:
+        return "on your right"
+    else:
+        return "ahead"
 
 
 def get_distance_status(height_ratio, target=TARGET_HEIGHT_RATIO, tolerance=DISTANCE_TOLERANCE):
