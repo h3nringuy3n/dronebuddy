@@ -17,6 +17,8 @@ MIN_HISTORY_SECONDS = 0.5  # Need at least this much history before classifying
 APPROACH_RATE = 0.10      # Box-height-ratio change per second that counts as approaching / moving away
 STILL_RATE = 0.10         # Max horizontal-error change per second that still counts as standing still
 CONFIRM_FRAMES = 3        # A new activity must hold this many frames in a row (filters box jitter)
+CONFIRM_TRACK_S = 0.5     # A person must stay in view this long before we report them at all
+                          # (brief false detections, e.g. tree trunks, never get announced)
 LEFT_FRAME_AFTER_S = 1.0  # Unseen this long -> person has left the frame
 
 
@@ -31,8 +33,10 @@ class ActivityEvent:
 class PersonTrack:
     """Recent position history of one person, identified by their ByteTrack ID."""
 
-    def __init__(self, track_id):
+    def __init__(self, track_id, first_seen):
         self.track_id = track_id
+        self.first_seen = first_seen
+        self.confirmed = False  # True once seen for CONFIRM_TRACK_S - only then is it reported
         self.history = deque()  # (time, horizontal_error, height_ratio)
         self.activity = None
         self.candidate = None
@@ -119,11 +123,17 @@ class TrackingModule:
 
             track = self.tracks.get(person.track_id)
             if track is None:
-                track = PersonTrack(person.track_id)
+                track = PersonTrack(person.track_id, now)
                 self.tracks[person.track_id] = track
-                events.append(ActivityEvent(person.track_id, NEW, horizontal_error, height_ratio))
 
             track.add_sample(now, horizontal_error, height_ratio)
+
+            ## Only report people who have been in view long enough to be real
+            if not track.confirmed:
+                if now - track.first_seen < CONFIRM_TRACK_S:
+                    continue
+                track.confirmed = True
+                events.append(ActivityEvent(person.track_id, NEW, horizontal_error, height_ratio))
 
             activity = track.update_activity()
             if activity is not None:
@@ -132,12 +142,14 @@ class TrackingModule:
         ## Anyone we haven't seen for a while has left the frame
         for track_id, track in list(self.tracks.items()):
             if now - track.last_seen() > LEFT_FRAME_AFTER_S:
-                horizontal_error, height_ratio = track.latest()
-                events.append(ActivityEvent(track_id, LEFT_FRAME, horizontal_error, height_ratio))
+                ## Never announced -> leave silently too
+                if track.confirmed:
+                    horizontal_error, height_ratio = track.latest()
+                    events.append(ActivityEvent(track_id, LEFT_FRAME, horizontal_error, height_ratio))
                 del self.tracks[track_id]
 
         return events
 
     def activity_of(self, track_id):
         track = self.tracks.get(track_id)
-        return track.activity if track else None
+        return track.activity if track and track.confirmed else None

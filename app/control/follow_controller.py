@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 
-from person_tracker import DEAD_ZONE, DISTANCE_TOLERANCE, TARGET_HEIGHT_RATIO
+from person_tracker import DEAD_ZONE, HEAD_TOLERANCE, TARGET_HEAD_RATIO
 
 ## Units match DJI MSDK v5 Virtual Stick in VELOCITY mode, body frame:
 ## forward/right/up in m/s, yaw in deg/s (+ = clockwise)
 YAW_GAIN = 40.0      # deg/s of yaw per unit of horizontal error (-1..1)
-FORWARD_GAIN = 2.0   # m/s of forward speed per unit of height-ratio error
+FORWARD_GAIN = 2.0   # m/s of forward speed per unit of head-position error
 
 
 @dataclass
@@ -24,19 +24,24 @@ class VelocityCommand:
         return f"fwd {self.forward:+.2f} m/s  yaw {self.yaw:+.0f} deg/s"
 
 
-## Turns the tracked person's position into a velocity command.
-## Speed is proportional to how far off we are: small error -> gentle correction.
-def get_drone_action(horizontal_error, height_ratio):
+## Turns the user's position into a velocity command that keeps them at the bottom-middle
+## of the frame. Speed is proportional to how far off we are: small error -> gentle correction.
+def get_drone_action(horizontal_error, head_ratio, head_cut_off=False):
     command = VelocityCommand()
 
-    ## Person off-center - turn toward them instead of sliding sideways,
+    ## User off-center - turn toward them instead of sliding sideways,
     ## which keeps them in frame much better
     if abs(horizontal_error) > DEAD_ZONE:
         command.yaw = YAW_GAIN * horizontal_error
 
-    ## Person too small (far) -> fly forward, too big (close) -> back away
-    distance_error = TARGET_HEIGHT_RATIO - height_ratio
-    if abs(distance_error) > DISTANCE_TOLERANCE:
+    ## Can't see the top of the head - no distance estimate, so only turn
+    if head_cut_off:
+        return command
+
+    ## Head high in frame (user walked ahead) -> fly forward,
+    ## head low (drone too close, user nearly underneath) -> back away
+    distance_error = TARGET_HEAD_RATIO - head_ratio
+    if abs(distance_error) > HEAD_TOLERANCE:
         command.forward = FORWARD_GAIN * distance_error
 
     ## Altitude is left alone for now - the person's box spans their whole body,
