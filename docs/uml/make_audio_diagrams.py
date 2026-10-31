@@ -412,8 +412,8 @@ def sequence_diagram():
 
     note_y = bottom + 20
     parts.append(rect(20, note_y, width - 40, 50, fill="#fff7ed", stroke=PLANNED, rx=6, dashed=True))
-    parts.append(text(36, note_y + 21, "Python's side of both bridge messages is built. Until the phone app handles them, test with --drone mock:", size=12.5))
-    parts.append(text(36, note_y + 39, "--voice-script stands in for the phone's voice_command, and the laptop speaks the answer.", size=12.5))
+    parts.append(text(36, note_y + 21, "Built: Python's side of both messages, and the phone speaking say (SpeechPlayer). Still to build: the push-to-talk screen.", size=12.5))
+    parts.append(text(36, note_y + 39, "Until then, test with --drone mock: --voice-script stands in for voice_command, and the laptop speaks the answer.", size=12.5))
     height = note_y + 70
     svg = svg_document(width, height, parts)
     save(UML_DIR, "audio_sequence_where_is.svg", svg, width, height)
@@ -510,7 +510,7 @@ def mockup():
     pw, ph = 300, 600
     width, height = 1240, 760
     parts = [text(30, 40, "Phone push-to-talk screen: UI mockup", size=24, weight="bold"),
-             text(30, 64, "Planned for the Android bridge app. Designed for a user who can't see the screen: the whole screen is one button.", size=13, fill=MUTED)]
+             text(30, 64, "For the Android bridge app (in progress). Designed for a user who can't see the screen: the whole screen is one button.", size=13, fill=MUTED)]
 
     def phone(x, y, bg, fg, title, line1, line2, caption, rings):
         out = [rect(x, y, pw, ph, fill="#0d1117", stroke="#0d1117", rx=36),
