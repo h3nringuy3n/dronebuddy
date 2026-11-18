@@ -95,13 +95,16 @@ CLASSES = {
         "- tracks: dict[int, PersonTrack]",
     ], [
         "+ update(people, w, h): list[ActivityEvent]",
+        "+ approaching(): list[ActivityEvent]",
         "+ activity_of(track_id): str",
     ]),
     "actions": (None, "ComputeActions", HEADER_AUDIO, [
         "- cooldown_s = 5.0",
         "- message_cooldown_s = 2.0",
+        "- tone_interval_s = 2.0",
     ], [
         "+ compute(events): list[Alert]",
+        "+ reminders(approaching): list[pan]",
     ]),
     "locator": (None, "ObjectLocator", HEADER_AUDIO, [
         "- cooldown_s = 10.0",
@@ -118,6 +121,7 @@ CLASSES = {
         "- last_spoken: str",
     ], [
         "+ say(text, priority, pan, repeatable)",
+        "+ tone(pan): bool",
         "+ repeat_last(): bool",
         "+ change_volume(step): float",
         "+ close()",
@@ -164,6 +168,7 @@ CLASSES = {
         "+ pan: float",
         "+ volume: float",
         "+ repeatable: bool",
+        "+ tone: bool",
     ], []),
     "command": ("dataclass", "VoiceCommand", HEADER_DATA, [
         "+ type: CommandType",
@@ -176,6 +181,7 @@ CLASSES = {
     ], []),
     "bridge": ("module", "bridge_messages", HEADER_VOICE, [], [
         "+ say_message(text, priority, pan, volume): dict",
+        "+ tone_message(pan, volume): dict",
         "+ parse_voice_command(message): VoiceCommand",
         "Sent / received through DJIController",
     ]),
@@ -499,7 +505,7 @@ def activity_diagram():
                        (loop_x, ys["wait"] - 30), (pc + 40, ys["wait"] - 30), (pc + 40, ys["wait"] - bh / 2)]))
     parts.append(text(loop_x - 8, ys["speak"] - bh / 2 - 14, "back to waiting", anchor="end", size=11.5, style="italic", fill=MUTED))
 
-    parts.append(text(20, height - 4, "Orange: the bridge messages. The phone app's side is not built yet; until then --voice-script and the laptop speaker stand in.", size=11.5, fill=PLANNED))
+    parts.append(text(20, height - 4, "Orange: the bridge messages. The phone speaks the answers; the push-to-talk screen is still to build, so --voice-script stands in for it.", size=11.5, fill=PLANNED))
     svg = svg_document(width, height + 10, parts)
     save(UML_DIR, "audio_activity_push_to_talk.svg", svg, width, height + 10)
 
